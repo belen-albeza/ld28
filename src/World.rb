@@ -95,37 +95,83 @@ module Entity
   @width = Map::SIZE
   @height = Map::SIZE
 
-  def clamp_inc(inc_x, inc_y)
-    # clamp x
-    clamped_inc_x = 0
-    if inc_x != 0
-      0.upto(inc_x.abs) do |i|
-        if self.phy_tile(@x + i * inc_x.sign, @y) == :solid
-          break
-        else
-          clamped_inc_x = i * inc_x.sign
-        end
+  def clamp_x(inc_x, x, y)
+    res = 0
+    0.upto(inc_x.abs) do |i|
+      if self.phy_tile(x + i * inc_x.sign, y) == :solid
+        break
+      else
+        res = i * inc_x.sign
       end
     end
-
-    # clamp y
-    clamped_inc_y = 0
-    if inc_y != 0
-      0.upto(inc_y.abs) do |i|
-        if self.phy_tile(@x, @y + i * inc_y.sign) == :solid
-          break
-        else
-          clamped_inc_y = i * inc_y.sign
-        end
-      end
-    end
-
-    [clamped_inc_x, clamped_inc_y]
+    res
   end
+
+  def clamp_y(inc_y, x, y)
+    res = 0
+    0.upto(inc_y.abs) do |i|
+      if self.phy_tile(x, y + i * inc_y.sign) == :solid
+        break
+      else
+        res = i * inc_y.sign
+      end
+    end
+    res
+  end
+
+  def clamp_inc_x(inc_x)
+    spots = self.hotspots
+    res = 0
+    if inc_x > 0 # moving right
+      res = [clamp_x(inc_x, *spots[:right_top]),
+             clamp_x(inc_x, *spots[:right]),
+             clamp_x(inc_x, *spots[:right_bottom])].min
+    elsif inc_x < 0 # moving left
+      res = [clamp_x(inc_x, *spots[:left_top]),
+             clamp_x(inc_x, *spots[:left]),
+             clamp_x(inc_x, *spots[:left_bottom])].max
+    end
+    res
+  end
+
+  def clamp_inc_y(inc_y)
+    spots = self.hotspots
+    res = 0
+    if inc_y > 0 # moving down
+      res = [clamp_y(inc_y, *spots[:left_bottom]),
+             clamp_y(inc_y, *spots[:bottom]),
+             clamp_y(inc_y, *spots[:right_bottom])].min
+    elsif inc_y < 0 # moving up
+      res = [clamp_y(inc_y, *spots[:left_top]),
+             clamp_y(inc_y, *spots[:top]),
+             clamp_y(inc_y, *spots[:right_top])].max
+    end
+    res
+  end
+
+  protected
 
   def phy_tile(x, y)
     col, row = @map.screen_to_map(x, y)
     @map.phy_tile(col, row)
+  end
+
+  def hotspots
+    left = @x - @width / 2
+    right = @x + (@width / 2) - 1
+    top = @y - @height / 2
+    bottom = @y + (@height / 2) - 1
+
+    {
+      :left_top => [left, top],
+      :top => [@x, top],
+      :right_top => [right, top],
+      :right => [right, @y],
+      :right_bottom => [right, bottom],
+      :bottom => [@x, bottom],
+      :left_bottom => [left, bottom],
+      :left => [left, @y]
+    }
   end
 end
 
@@ -137,6 +183,8 @@ class Hero
     @map = map
     @x = 0
     @y = 0
+    @width = @image.width
+    @height = @image.height
   end
 
   def draw
@@ -160,8 +208,9 @@ class Hero
       inc_y = 0
     end
 
-    inc_x, inc_y = self.clamp_inc(inc_x, inc_y)
+    inc_x = self.clamp_inc_x(inc_x)
     @x += inc_x
+    inc_y = self.clamp_inc_y(inc_y)
     @y += inc_y
   end
 end
