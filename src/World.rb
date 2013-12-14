@@ -149,6 +149,16 @@ module Entity
     res
   end
 
+  def update_physics
+    inc_x = self.clamp_inc_x(@speed_x * $game.delta)
+    @x += inc_x
+    @speed_x = 0 if inc_x.zero?
+
+    inc_y = self.clamp_inc_y(@speed_y * $game.delta)
+    @y += inc_y
+    @speed_y = 0 if inc_y.zero?
+  end
+
   protected
 
   def phy_tile(x, y)
@@ -177,6 +187,8 @@ end
 
 class Hero
   include Entity
+  MAX_SPEED_X = 300
+  MAX_SPEED_Y = 300
 
   def initialize(map)
     @image = $game.images[:hero]
@@ -185,6 +197,11 @@ class Hero
     @y = 0
     @width = @image.width
     @height = @image.height
+
+    @speed_x = 0
+    @speed_y = 0
+    @accel_x = 0
+    @accel_y = 0
   end
 
   def draw
@@ -192,25 +209,48 @@ class Hero
   end
 
   def update
-    if $game.button_down?(Gosu::KbRight)
-      inc_x = 300 * $game.delta
-    elsif $game.button_down?(Gosu::KbLeft)
-      inc_x = -300 * $game.delta
-    else
-      inc_x = 0
-    end
+    self.update_horizontal_speed
+    self.update_vertical_speed
 
+    self.update_physics
+  end
+
+  protected
+
+  def update_vertical_speed
     if $game.button_down?(Gosu::KbDown)
-      inc_y = 300 * $game.delta
+      @speed_y = 300
     elsif $game.button_down?(Gosu::KbUp)
-      inc_y = -300 * $game.delta
+      @speed_y = -300
     else
-      inc_y = 0
+      @speed_y = 0
     end
 
-    inc_x = self.clamp_inc_x(inc_x)
-    @x += inc_x
-    inc_y = self.clamp_inc_y(inc_y)
-    @y += inc_y
+    @speed_y += @accel_y
+    @speed_y = [@speed_y, MAX_SPEED_Y].min if @speed_y > 0
+    @speed_y = [@speed_y, -MAX_SPEED_Y].max if @speed_y < 0
+  end
+
+  def update_horizontal_speed
+    if $game.button_down?(Gosu::KbRight)
+      @accel_x = 300
+    elsif $game.button_down?(Gosu::KbLeft)
+      @accel_x = -300
+    else
+      @accel_x = 0
+    end
+
+    if @accel_x.abs > 0
+      @speed_x += @accel_x
+    else
+      if @speed_x > 0
+        @speed_x = [@speed_x - 600 * $game.delta, 0].max
+      elsif @speed_x < 0
+        @speed_x = [@speed_x + 600 * $game.delta, 0].min
+      end
+    end
+
+    @speed_x = [@speed_x, MAX_SPEED_X].min if @speed_x > 0
+    @speed_x = [@speed_x, -MAX_SPEED_X].max if @speed_x < 0
   end
 end
