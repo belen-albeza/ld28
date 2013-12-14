@@ -15,4 +15,7 @@ tmp
 # YARD artifacts
 .yardoc
 _yardoc
+
+# custom
 doc/
+build/
