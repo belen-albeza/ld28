@@ -11,10 +11,6 @@ class PlayScene < Scene
     @hero = Hero.new(@map)
   end
 
-  def button_up(key)
-    $game.close if key == Gosu::KbEscape
-  end
-
   def draw
     @map.draw
     @hero.draw
@@ -22,6 +18,18 @@ class PlayScene < Scene
 
   def update
     @hero.update
+  end
+
+  def button_down(key)
+    case key
+    when Gosu::KbA then @hero.jump
+    end
+  end
+
+  def button_up(key)
+    case key
+    when Gosu::KbEscape then $game.close
+    end
   end
 end
 
@@ -156,7 +164,25 @@ module Entity
 
     inc_y = self.clamp_inc_y(@speed_y * $game.delta)
     @y += inc_y
-    @speed_y = 0 if inc_y.zero?
+
+    @speed_y = 0 if self.is_on_ground? and @speed_y > 0
+    @speed_y = 0 if self.is_under_ground? and @speed_y < 0
+  end
+
+  def is_under_ground?
+    spots = self.hotspots
+    [:left_top, :top, :right_top].each do |name|
+      return true if self.phy_tile(spots[name][0], spots[name][1] - 1) == :solid
+    end
+    false
+  end
+
+  def is_on_ground?
+    spots = self.hotspots
+    [:left_bottom, :bottom, :right_bottom].each do |name|
+      return true if self.phy_tile(spots[name][0], spots[name][1] + 1) == :solid
+    end
+    false
   end
 
   protected
@@ -188,16 +214,16 @@ end
 class Hero
   include Entity
   MAX_SPEED_X = 300
-  MAX_SPEED_Y = 300
+  MAX_SPEED_Y = 600
 
   def initialize(map)
     @image = $game.images[:hero]
     @map = map
-    @x = 0
-    @y = 0
     @width = @image.width
     @height = @image.height
 
+    @x = 48
+    @y = 96
     @speed_x = 0
     @speed_y = 0
     @accel_x = 0
@@ -206,6 +232,10 @@ class Hero
 
   def draw
     @image.draw_rot @x, @y, 1, 0
+  end
+
+  def jump
+    @speed_y = -MAX_SPEED_Y
   end
 
   def update
@@ -218,15 +248,10 @@ class Hero
   protected
 
   def update_vertical_speed
-    if $game.button_down?(Gosu::KbDown)
-      @speed_y = 300
-    elsif $game.button_down?(Gosu::KbUp)
-      @speed_y = -300
-    else
-      @speed_y = 0
-    end
+    # gravity
+    @accel_y = 900
 
-    @speed_y += @accel_y
+    @speed_y += @accel_y * $game.delta
     @speed_y = [@speed_y, MAX_SPEED_Y].min if @speed_y > 0
     @speed_y = [@speed_y, -MAX_SPEED_Y].max if @speed_y < 0
   end
@@ -244,9 +269,9 @@ class Hero
       @speed_x += @accel_x
     else
       if @speed_x > 0
-        @speed_x = [@speed_x - 600 * $game.delta, 0].max
+        @speed_x = [@speed_x - 900 * $game.delta, 0].max
       elsif @speed_x < 0
-        @speed_x = [@speed_x + 600 * $game.delta, 0].min
+        @speed_x = [@speed_x + 900 * $game.delta, 0].min
       end
     end
 

@@ -15,6 +15,10 @@ class Game < Gosu::Window
     @current_scene.button_up(key)
   end
 
+  def button_down(key)
+    @current_scene.button_down(key)
+  end
+
   def draw
     @current_scene.draw
   end
@@ -52,5 +56,8 @@ class Scene
   end
 
   def button_up(key)
+  end
+
+  def button_down(key)
   end
 end
